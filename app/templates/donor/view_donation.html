@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}{{ donation.title }} - Food Waste Tracker{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('donor.dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('donor.my_donations') }}">My Donations</a></li>
+                    <li class="breadcrumb-item active">{{ donation.title }}</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1>{{ donation.title }}</h1>
+                    <p class="text-muted mb-0">{{ donation.category.name }}</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <span class="badge bg-{{ donation.get_status_class() }} fs-6">
+                        {{ donation.status.title() }}
+                    </span>
+                    {% if donation.is_urgent() and donation.status == 'available' %}
+                        <span class="badge bg-warning fs-6">
+                            <i class="bi bi-exclamation-triangle"></i> Urgent
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Food Details -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Food Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <h6>Description</h6>
+                            <p class="text-muted">{{ donation.description }}</p>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <h6>Quantity</h6>
+                            <p class="mb-0">
+                                <span class="fs-4 fw-bold text-success">{{ donation.quantity }}</span>
+                                <span class="text-muted">{{ donation.unit }}</span>
+                            </p>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <h6>Expiry Date</h6>
+                            <p class="mb-0">
+                                <span class="fw-bold {{ 'text-warning' if donation.is_urgent() else 'text-info' }}">
+                                    {{ donation.expiry_date.strftime('%B %d, %Y') }}
+                                </span>
+                                <br>
+                                <small class="text-muted">
+                                    ({{ donation.days_until_expiry() }} days remaining)
+                                </small>
+                            </p>
+                        </div>
+                        
+                        {% if donation.dietary_info %}
+                        <div class="col-md-6 mb-3">
+                            <h6>Dietary Information</h6>
+                            <span class="badge bg-light text-dark">{{ donation.dietary_info.title() }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="col-md-6 mb-3">
+                            <h6>Storage Requirements</h6>
+                            <p class="mb-0">
+                                {% if donation.is_perishable %}
+                                    <i class="bi bi-snow text-info"></i> Requires refrigeration
+                                {% else %}
+                                    <i class="bi bi-thermometer text-muted"></i> Room temperature storage
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pickup Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-geo-alt"></i> Pickup Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <h6>Address</h6>
+                            <address class="mb-0">
+                                {{ donation.pickup_address }}<br>
+                                {{ donation.pickup_city }}
+                            </address>
+                        </div>
+                        
+                        {% if donation.pickup_instructions %}
+                        <div class="col-12 mb-3">
+                            <h6>Pickup Instructions</h6>
+                            <div class="bg-light p-3 rounded">
+                                <p class="mb-0">{{ donation.pickup_instructions }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Claim Information -->
+            {% if donation.claim %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-building text-primary"></i> 
+                        {% if donation.status == 'claimed' %}
+                            Claimed by NGO
+                        {% else %}
+                            Completed Donation
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6>NGO Organization</h6>
+                            <p class="mb-0">
+                                <strong>{{ donation.claim.ngo.organization_name or donation.claim.ngo.full_name }}</strong><br>
+                                <small class="text-muted">{{ donation.claim.ngo.email }}</small>
+                            </p>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <h6>Claim Date</h6>
+                            <p class="mb-0">{{ donation.claim.claimed_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                        </div>
+                        
+                        {% if donation.claim.notes %}
+                        <div class="col-12 mb-3">
+                            <h6>NGO Notes</h6>
+                            <div class="bg-light p-3 rounded">
+                                <p class="mb-0">{{ donation.claim.notes }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if donation.status == 'completed' and donation.claim.completed_at %}
+                        <div class="col-12">
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle"></i>
+                                <strong>Donation Completed!</strong>
+                                Pickup was completed on {{ donation.claim.completed_at.strftime('%B %d, %Y at %I:%M %p') }}.
+                                Thank you for helping reduce food waste!
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Actions -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5><i class="bi bi-gear"></i> Actions</h5>
+                    
+                    {% if donation.can_be_edited() %}
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('donor.edit_donation', id=donation.id) }}" class="btn btn-warning">
+                                <i class="bi bi-pencil"></i> Edit Donation
+                            </a>
+                        </div>
+                    {% else %}
+                        <p class="text-muted small">
+                            This donation cannot be edited because it has been {{ donation.status }}.
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Status Timeline -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5><i class="bi bi-clock-history"></i> Status Timeline</h5>
+                    
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Donation Created</h6>
+                                <p class="text-muted small mb-0">
+                                    {{ donation.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        {% if donation.claim %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-primary"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Claimed by NGO</h6>
+                                <p class="text-muted small mb-0">
+                                    {{ donation.claim.claimed_at.strftime('%B %d, %Y at %I:%M %p') }}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        {% if donation.status == 'completed' and donation.claim.completed_at %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Pickup Completed</h6>
+                                <p class="text-muted small mb-0">
+                                    {{ donation.claim.completed_at.strftime('%B %d, %Y at %I:%M %p') }}
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Impact Stats -->
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-heart display-4 text-danger mb-2"></i>
+                    <h6>Your Impact</h6>
+                    <p class="small text-muted">
+                        {% if donation.status == 'completed' %}
+                            This donation helped reduce food waste and provided 
+                            {{ donation.quantity }} {{ donation.unit }} of food to those in need. 
+                            Thank you for making a difference!
+                        {% elif donation.status == 'claimed' %}
+                            This donation is being picked up by an NGO and will help 
+                            feed families while reducing food waste.
+                        {% else %}
+                            This donation has the potential to help reduce food waste 
+                            and provide nutrition to families in need.
+                        {% endif %}
+                    </p>
+                    
+                    {% if donation.status == 'completed' %}
+                    <div class="row text-center mt-3">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <strong class="text-success">1</strong>
+                                <br><small class="text-muted">Donation</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <strong class="text-primary">{{ donation.quantity }}</strong>
+                            <br><small class="text-muted">{{ donation.unit }}</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -22px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+
+.timeline-content h6 {
+    color: #495057;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

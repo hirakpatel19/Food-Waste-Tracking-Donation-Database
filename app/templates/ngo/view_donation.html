@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}{{ donation.title }} - Food Waste Tracker{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('ngo.dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('ngo.browse_donations') }}">Browse Donations</a></li>
+                    <li class="breadcrumb-item active">{{ donation.title }}</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1>{{ donation.title }}</h1>
+                    <p class="text-muted mb-0">{{ donation.category.name }} • by {{ donation.donor.get_display_name() }}</p>
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="badge bg-{{ donation.get_status_class() }} fs-6">
+                        {{ donation.status.title() }}
+                    </span>
+                    {% if donation.is_urgent() and donation.status == 'available' %}
+                        <span class="badge bg-warning fs-6">
+                            <i class="bi bi-exclamation-triangle"></i> Urgent
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if donation.is_urgent() and donation.status == 'available' %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                <strong>Urgent Donation!</strong> This food expires in {{ donation.days_until_expiry() }} day{{ 's' if donation.days_until_expiry() != 1 else '' }}. 
+                Please claim and arrange pickup as soon as possible.
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Food Details -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Food Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <h6>Description</h6>
+                            <p class="text-muted">{{ donation.description }}</p>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <h6>Quantity</h6>
+                            <p class="mb-0">
+                                <span class="fs-4 fw-bold text-success">{{ donation.quantity }}</span>
+                                <span class="text-muted">{{ donation.unit }}</span>
+                            </p>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <h6>Expiry Date</h6>
+                            <p class="mb-0">
+                                <span class="fw-bold {{ 'text-warning' if donation.is_urgent() else 'text-info' }}">
+                                    {{ donation.expiry_date.strftime('%B %d, %Y') }}
+                                </span>
+                                <br>
+                                <small class="text-muted">
+                                    ({{ donation.days_until_expiry() }} days remaining)
+                                </small>
+                            </p>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <h6>Storage Requirements</h6>
+                            <p class="mb-0">
+                                {% if donation.is_perishable %}
+                                    <i class="bi bi-snow text-info"></i> Requires refrigeration
+                                {% else %}
+                                    <i class="bi bi-thermometer text-muted"></i> Room temperature storage
+                                {% endif %}
+                            </p>
+                        </div>
+                        
+                        {% if donation.dietary_info %}
+                        <div class="col-12 mb-3">
+                            <h6>Dietary Information</h6>
+                            <span class="badge bg-light text-dark fs-6">{{ donation.dietary_info.title() }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Donor & Pickup Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-person"></i> Donor & Pickup Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6>Donor Contact</h6>
+                            <p class="mb-0">
+                                <strong>{{ donation.donor.get_display_name() }}</strong><br>
+                                <i class="bi bi-envelope"></i> {{ donation.donor.email }}<br>
+                                {% if donation.donor.phone %}
+                                <i class="bi bi-telephone"></i> {{ donation.donor.phone }}<br>
+                                {% endif %}
+                            </p>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <h6>Pickup Address</h6>
+                            <address class="mb-0">
+                                {{ donation.pickup_address }}<br>
+                                {{ donation.pickup_city }}
+                            </address>
+                        </div>
+                        
+                        {% if donation.pickup_instructions %}
+                        <div class="col-12 mb-3">
+                            <h6>Pickup Instructions</h6>
+                            <div class="bg-light p-3 rounded">
+                                <p class="mb-0">{{ donation.pickup_instructions }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Claim Status -->
+            {% if donation.claim %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-check-circle text-success"></i> 
+                        Claim Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if donation.claim.ngo_id == current_user.id %}
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i>
+                        <strong>You have claimed this donation!</strong>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>This donation has been claimed by another NGO.</strong>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6>Claimed By</h6>
+                            <p class="mb-0">
+                                <strong>{{ donation.claim.ngo.organization_name or donation.claim.ngo.full_name }}</strong><br>
+                                <small class="text-muted">{{ donation.claim.claimed_at.strftime('%B %d, %Y at %I:%M %p') }}</small>
+                            </p>
+                        </div>
+                        
+                        {% if donation.claim.notes %}
+                        <div class="col-12 mb-3">
+                            <h6>Claim Notes</h6>
+                            <div class="bg-light p-3 rounded">
+                                <p class="mb-0">{{ donation.claim.notes }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if donation.status == 'completed' and donation.claim.completed_at %}
+                        <div class="col-12">
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle"></i>
+                                <strong>Pickup Completed!</strong>
+                                The food was successfully picked up on {{ donation.claim.completed_at.strftime('%B %d, %Y at %I:%M %p') }}.
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Actions -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5><i class="bi bi-gear"></i> Actions</h5>
+                    
+                    {% if donation.can_be_claimed() %}
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('ngo.claim_donation', id=donation.id) }}" class="btn btn-success btn-lg">
+                                <i class="bi bi-hand-thumbs-up"></i> Claim This Donation
+                            </a>
+                        </div>
+                        <p class="text-muted small mt-2">
+                            By claiming this donation, you commit to picking it up within 48 hours.
+                        </p>
+                    {% elif donation.claim and donation.claim.ngo_id == current_user.id %}
+                        {% if donation.status == 'claimed' %}
+                        <div class="d-grid gap-2">
+                            <form method="POST" action="{{ url_for('ngo.complete_pickup', id=donation.claim.id) }}" 
+                                  onsubmit="return confirm('Confirm that you have picked up this donation?')">
+                                <button type="submit" class="btn btn-primary btn-lg w-100">
+                                    <i class="bi bi-check-circle"></i> Mark as Picked Up
+                                </button>
+                            </form>
+                        </div>
+                        <p class="text-muted small mt-2">
+                            Mark as complete after you have successfully picked up the food.
+                        </p>
+                        {% else %}
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i>
+                            <strong>Pickup Complete!</strong>
+                            You have successfully completed this donation pickup.
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-secondary">
+                            <i class="bi bi-info-circle"></i>
+                            {% if donation.status != 'available' %}
+                                This donation is {{ donation.status }} and cannot be claimed.
+                            {% elif donation.is_expired() %}
+                                This donation has expired.
+                            {% else %}
+                                This donation is not available for claiming.
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                    
+                    <hr>
+                    <a href="{{ url_for('ngo.browse_donations') }}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-arrow-left"></i> Back to Browse
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Quick Info -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5><i class="bi bi-info-circle"></i> Quick Info</h5>
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Posted:</span>
+                        <span>{{ donation.created_at.strftime('%m/%d/%Y') }}</span>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Days until expiry:</span>
+                        <span class="{{ 'text-warning' if donation.is_urgent() else 'text-info' }}">
+                            {{ donation.days_until_expiry() }}
+                        </span>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Estimated servings:</span>
+                        <span class="text-success">
+                            {% if donation.unit in ['kg', 'pounds', 'lbs'] %}
+                                ~{{ (donation.quantity * 4)|int }}
+                            {% elif donation.unit in ['pieces', 'items'] %}
+                                ~{{ donation.quantity }}
+                            {% else %}
+                                Multiple
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Impact Information -->
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-heart display-4 text-danger mb-2"></i>
+                    <h6>Make an Impact</h6>
+                    <p class="small text-muted">
+                        By claiming this donation, you're helping reduce food waste 
+                        and providing nutrition to families in need. Every claim makes a difference!
+                    </p>
+                    
+                    {% if donation.status == 'available' %}
+                    <div class="row text-center mt-3">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <strong class="text-success">{{ donation.quantity }}</strong>
+                                <br><small class="text-muted">{{ donation.unit }}</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <strong class="text-primary">{{ donation.days_until_expiry() }}</strong>
+                            <br><small class="text-muted">days left</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

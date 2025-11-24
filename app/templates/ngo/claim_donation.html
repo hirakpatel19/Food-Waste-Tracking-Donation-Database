@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Claim Donation - {{ donation.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('ngo.dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('ngo.browse_donations') }}">Browse Donations</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('ngo.view_donation', id=donation.id) }}">{{ donation.title }}</a></li>
+                    <li class="breadcrumb-item active">Claim</li>
+                </ol>
+            </nav>
+            <h1><i class="bi bi-hand-thumbs-up"></i> Claim Food Donation</h1>
+            <p class="text-muted">Confirm your claim for this food donation</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Claim Form -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-check-circle"></i> 
+                        Claim: {{ donation.title }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if not donation.can_be_claimed() %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Cannot Claim:</strong>
+                        {% if donation.status != 'available' %}
+                            This donation is no longer available (status: {{ donation.status }}).
+                        {% elif donation.is_expired() %}
+                            This donation has expired.
+                        {% else %}
+                            This donation cannot be claimed at this time.
+                        {% endif %}
+                    </div>
+                    <a href="{{ url_for('ngo.browse_donations') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Browse
+                    </a>
+                    {% else %}
+                    <!-- Donation Summary -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-success mb-3">Donation Summary</h6>
+                            <div class="bg-light p-3 rounded">
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <strong>Food Item:</strong> {{ donation.title }}
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <strong>Category:</strong> {{ donation.category.name }}
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <strong>Quantity:</strong> {{ donation.quantity }} {{ donation.unit }}
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <strong>Expires:</strong> 
+                                        <span class="{{ 'text-warning' if donation.is_urgent() else 'text-info' }}">
+                                            {{ donation.expiry_date.strftime('%B %d, %Y') }}
+                                            ({{ donation.days_until_expiry() }} days)
+                                        </span>
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <strong>Pickup Location:</strong> {{ donation.pickup_city }}
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <strong>Storage:</strong> 
+                                        {{ 'Refrigerated' if donation.is_perishable else 'Room Temperature' }}
+                                    </div>
+                                    {% if donation.dietary_info %}
+                                    <div class="col-12 mb-2">
+                                        <strong>Dietary Info:</strong> 
+                                        <span class="badge bg-light text-dark">{{ donation.dietary_info.title() }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Claim Form -->
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-4">
+                            <h6 class="text-success mb-3">Claim Details</h6>
+                            
+                            <!-- Notes -->
+                            <div class="mb-3">
+                                {{ form.notes.label(class="form-label") }}
+                                {{ form.notes(class="form-control" + (" is-invalid" if form.notes.errors else ""), rows="3") }}
+                                {% if form.notes.errors %}
+                                    <div class="invalid-feedback">
+                                        {{ form.notes.errors[0] }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Add any notes for the donor (pickup time preferences, special requirements, etc.)
+                                </div>
+                            </div>
+                            
+                            <!-- Confirmation -->
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="confirmClaim" required>
+                                <label class="form-check-label" for="confirmClaim">
+                                    I confirm that my organization can pick up this donation within the next 2 days
+                                </label>
+                            </div>
+                            
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="confirmContact" required>
+                                <label class="form-check-label" for="confirmContact">
+                                    I will contact the donor to coordinate pickup details
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Buttons -->
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{{ url_for('ngo.view_donation', id=donation.id) }}" class="btn btn-secondary">
+                                <i class="bi bi-x"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-circle"></i> Confirm Claim
+                            </button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Donor Information -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5><i class="bi bi-person"></i> Donor Information</h5>
+                    <div class="mb-3">
+                        <strong>Name:</strong> {{ donation.donor.get_display_name() }}<br>
+                        <strong>Contact:</strong> {{ donation.donor.email }}<br>
+                        {% if donation.donor.phone %}
+                        <strong>Phone:</strong> {{ donation.donor.phone }}<br>
+                        {% endif %}
+                    </div>
+                    
+                    <h6>Pickup Details</h6>
+                    <address class="mb-2">
+                        {{ donation.pickup_address }}<br>
+                        {{ donation.pickup_city }}
+                    </address>
+                    
+                    {% if donation.pickup_instructions %}
+                    <h6>Special Instructions</h6>
+                    <div class="bg-light p-2 rounded small">
+                        {{ donation.pickup_instructions }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Claiming Guidelines -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="text-success"><i class="bi bi-info-circle"></i> Claiming Guidelines</h5>
+                    
+                    <h6 class="mt-3">After Claiming:</h6>
+                    <ul class="small">
+                        <li>Contact the donor within 2 hours</li>
+                        <li>Arrange pickup within 24-48 hours</li>
+                        <li>Bring appropriate containers/bags</li>
+                        <li>Follow food safety guidelines</li>
+                        <li>Mark as completed after pickup</li>
+                    </ul>
+                    
+                    <h6 class="mt-3">Safety Reminders:</h6>
+                    <ul class="small">
+                        <li>Check food quality upon pickup</li>
+                        <li>Maintain cold chain for perishables</li>
+                        <li>Document any issues</li>
+                        <li>Distribute to beneficiaries promptly</li>
+                    </ul>
+                    
+                    <div class="mt-3 p-2 bg-success bg-opacity-10 rounded">
+                        <small class="text-success">
+                            <i class="bi bi-shield-check"></i>
+                            <strong>Food Safety:</strong> Only accept food that meets your organization's safety standards.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if donation.is_urgent() %}
+<script>
+// Add urgency indicator
+document.addEventListener('DOMContentLoaded', function() {
+    const urgentBanner = document.createElement('div');
+    urgentBanner.className = 'alert alert-warning alert-dismissible fade show';
+    urgentBanner.innerHTML = `
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>Urgent Donation!</strong> This food expires in {{ donation.days_until_expiry() }} day(s). 
+        Please coordinate pickup as soon as possible.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.container').prepend(urgentBanner);
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Food Waste Tracker - Reducing Waste, Fighting Hunger{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section bg-success text-white py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-4">Reduce Food Waste, Fight Hunger</h1>
+                <p class="lead mb-4">Connect surplus food with those who need it most. Join our community of donors and NGOs working together to achieve Zero Hunger.</p>
+                <div class="d-flex gap-3">
+                    {% if not current_user.is_authenticated %}
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg">
+                            <i class="bi bi-person-plus"></i> Join Now
+                        </a>
+                        <a href="{{ url_for('main.browse_donations') }}" class="btn btn-outline-light btn-lg">
+                            <i class="bi bi-search"></i> Browse Food
+                        </a>
+                    {% else %}
+                        {% if current_user.is_donor() %}
+                            <a href="{{ url_for('donor.add_donation') }}" class="btn btn-light btn-lg">
+                                <i class="bi bi-plus-circle"></i> Add Donation
+                            </a>
+                        {% else %}
+                            <a href="{{ url_for('ngo.browse_donations') }}" class="btn btn-light btn-lg">
+                                <i class="bi bi-search"></i> Browse Donations
+                            </a>
+                        {% endif %}
+                        <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-light btn-lg">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-lg-6 text-center">
+                <i class="bi bi-recycle display-1 opacity-75"></i>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Statistics Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-md-3 mb-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <i class="bi bi-gift text-success display-4 mb-3"></i>
+                        <h3 class="text-success">{{ stats.total_donations }}</h3>
+                        <p class="text-muted mb-0">Total Donations</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <i class="bi bi-check-circle text-primary display-4 mb-3"></i>
+                        <h3 class="text-primary">{{ stats.available_donations }}</h3>
+                        <p class="text-muted mb-0">Available Now</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <i class="bi bi-heart text-danger display-4 mb-3"></i>
+                        <h3 class="text-danger">{{ stats.completed_donations }}</h3>
+                        <p class="text-muted mb-0">Completed</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <i class="bi bi-people text-warning display-4 mb-3"></i>
+                        <h3 class="text-warning">{{ stats.total_donors + stats.total_ngos }}</h3>
+                        <p class="text-muted mb-0">Active Users</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Recent Donations Section -->
+{% if recent_donations %}
+<section class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h2 class="text-center mb-5">Recent Food Donations</h2>
+            </div>
+        </div>
+        <div class="row">
+            {% for donation in recent_donations %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title">{{ donation.title }}</h5>
+                            <span class="badge bg-{{ donation.get_status_class() }}">{{ donation.status.title() }}</span>
+                        </div>
+                        <p class="text-muted small mb-2">
+                            <i class="bi bi-tag"></i> {{ donation.category.name }}
+                        </p>
+                        <p class="card-text">{{ donation.description[:100] }}{% if donation.description|length > 100 %}...{% endif %}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="bi bi-geo-alt"></i> {{ donation.pickup_city }}
+                            </small>
+                            <small class="text-muted">
+                                <i class="bi bi-clock"></i> {{ donation.days_until_expiry() }} days left
+                            </small>
+                        </div>
+                        {% if donation.is_urgent() %}
+                        <div class="mt-2">
+                            <span class="badge bg-warning text-dark">Urgent - Expires Soon!</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <small class="text-muted">{{ donation.quantity }} {{ donation.unit }}</small>
+                        {% if current_user.is_authenticated and current_user.is_ngo() %}
+                            <a href="{{ url_for('ngo.view_donation', id=donation.id) }}" class="btn btn-sm btn-outline-success float-end">View Details</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-4">
+            <a href="{{ url_for('main.browse_donations') }}" class="btn btn-success btn-lg">
+                <i class="bi bi-search"></i> Browse All Donations
+            </a>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- How It Works Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h2 class="text-center mb-5">How It Works</h2>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4 text-center mb-4">
+                <div class="mb-4">
+                    <i class="bi bi-person-plus display-3 text-success"></i>
+                </div>
+                <h4>1. Sign Up</h4>
+                <p class="text-muted">Join as a Food Donor (restaurant, household, store) or NGO (charity, food bank).</p>
+            </div>
+            <div class="col-md-4 text-center mb-4">
+                <div class="mb-4">
+                    <i class="bi bi-gift display-3 text-primary"></i>
+                </div>
+                <h4>2. Share or Find Food</h4>
+                <p class="text-muted">Donors post surplus food, NGOs browse and claim what they need.</p>
+            </div>
+            <div class="col-md-4 text-center mb-4">
+                <div class="mb-4">
+                    <i class="bi bi-heart display-3 text-danger"></i>
+                </div>
+                <h4>3. Make Impact</h4>
+                <p class="text-muted">Reduce waste, feed communities, and work together towards Zero Hunger.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Call to Action -->
+<section class="py-5 bg-success text-white">
+    <div class="container text-center">
+        <h2 class="mb-4">Ready to Make a Difference?</h2>
+        <p class="lead mb-4">Join thousands of donors and NGOs already making an impact in their communities.</p>
+        {% if not current_user.is_authenticated %}
+        <div class="d-flex justify-content-center gap-3">
+            <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg">
+                <i class="bi bi-person-plus"></i> Sign Up as Donor
+            </a>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-light btn-lg">
+                <i class="bi bi-building"></i> Sign Up as NGO
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

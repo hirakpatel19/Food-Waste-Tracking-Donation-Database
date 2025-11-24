@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}My Claims - Food Waste Tracker{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('ngo.dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active">My Claims</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1><i class="bi bi-list-check"></i> My Food Claims</h1>
+                    <p class="text-muted mb-0">Manage your claimed food donations and pickup status</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('ngo.browse_donations') }}" class="btn btn-success">
+                        <i class="bi bi-search"></i> Browse More Donations
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Status Filter -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Filter by Status</label>
+                            <select name="status" class="form-select">
+                                <option value="">All Claims</option>
+                                <option value="claimed" {{ 'selected' if status_filter == 'claimed' }}>Pending Pickup</option>
+                                <option value="completed" {{ 'selected' if status_filter == 'completed' }}>Completed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-funnel"></i> Apply Filter
+                            </button>
+                        </div>
+                        {% if status_filter %}
+                        <div class="col-md-3">
+                            <a href="{{ url_for('ngo.my_claims') }}" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-x"></i> Clear Filter
+                            </a>
+                        </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Claims List -->
+    {% if claims.items %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <p class="text-muted">
+                Showing {{ claims.items|length }} of {{ claims.total }} claims
+                {% if claims.pages > 1 %}(Page {{ claims.page }} of {{ claims.pages }}){% endif %}
+                {% if status_filter %} - Filtered by: <strong>{{ status_filter.title() }}</strong>{% endif %}
+            </p>
+        </div>
+    </div>
+    
+    <div class="row">
+        {% for claim in claims.items %}
+        {% set donation = claim.donation %}
+        <div class="col-lg-6 mb-4">
+            <div class="card claim-card h-100 {{ 'border-warning' if donation.is_urgent() and claim.status != 'completed' }}">
+                {% if donation.is_urgent() and claim.status != 'completed' %}
+                <div class="card-header bg-warning bg-opacity-25">
+                    <small class="text-warning fw-bold">
+                        <i class="bi bi-exclamation-triangle"></i> 
+                        Urgent: Expires in {{ donation.days_until_expiry() }} day{{ 's' if donation.days_until_expiry() != 1 else '' }}!
+                    </small>
+                </div>
+                {% endif %}
+                
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title mb-0">{{ donation.title }}</h5>
+                        <span class="badge bg-{{ 'info' if claim.status == 'claimed' else 'success' }}">
+                            {{ 'Pending Pickup' if claim.status == 'claimed' else 'Completed' }}
+                        </span>
+                    </div>
+                    
+                    <p class="text-muted small mb-2">
+                        <i class="bi bi-tag"></i> {{ donation.category.name }}
+                        {% if donation.dietary_info %}
+                            • <i class="bi bi-info-circle"></i> {{ donation.dietary_info.title() }}
+                        {% endif %}
+                    </p>
+                    
+                    <p class="card-text">{{ donation.description[:120] }}{% if donation.description|length > 120 %}...{% endif %}</p>
+                    
+                    <div class="row mb-3">
+                        <div class="col-4 text-center">
+                            <strong class="text-success">{{ donation.quantity }}</strong>
+                            <br><small class="text-muted">{{ donation.unit }}</small>
+                        </div>
+                        <div class="col-4 text-center">
+                            <strong class="{{ 'text-warning' if donation.is_urgent() else 'text-info' }}">
+                                {{ donation.days_until_expiry() }}
+                            </strong>
+                            <br><small class="text-muted">days left</small>
+                        </div>
+                        <div class="col-4 text-center">
+                            <strong class="text-secondary">
+                                {{ claim.claimed_at.strftime('%m/%d') }}
+                            </strong>
+                            <br><small class="text-muted">claimed</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Donor Contact Info -->
+                    <div class="bg-light p-2 rounded mb-2">
+                        <small>
+                            <i class="bi bi-person text-primary"></i>
+                            <strong>Donor:</strong> {{ donation.donor.get_display_name() }}<br>
+                            <i class="bi bi-envelope"></i> {{ donation.donor.email }}
+                            {% if donation.donor.phone %}
+                            <br><i class="bi bi-telephone"></i> {{ donation.donor.phone }}
+                            {% endif %}
+                        </small>
+                    </div>
+                    
+                    <!-- Pickup Location -->
+                    <div class="bg-light p-2 rounded mb-2">
+                        <small>
+                            <i class="bi bi-geo-alt text-success"></i>
+                            <strong>Pickup:</strong> {{ donation.pickup_city }}<br>
+                            {{ donation.pickup_address }}
+                        </small>
+                    </div>
+                    
+                    {% if claim.notes %}
+                    <div class="bg-info bg-opacity-10 p-2 rounded mb-2">
+                        <small>
+                            <i class="bi bi-chat-text text-info"></i>
+                            <strong>Your notes:</strong> {{ claim.notes }}
+                        </small>
+                    </div>
+                    {% endif %}
+                    
+                    {% if donation.pickup_instructions %}
+                    <div class="bg-warning bg-opacity-10 p-2 rounded mb-2">
+                        <small>
+                            <i class="bi bi-info-circle text-warning"></i>
+                            <strong>Pickup instructions:</strong> {{ donation.pickup_instructions }}
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            {% if claim.status == 'claimed' %}
+                                <i class="bi bi-clock"></i> Claimed {{ claim.claimed_at.strftime('%m/%d/%Y') }}
+                            {% else %}
+                                <i class="bi bi-check-circle text-success"></i> Completed {{ claim.completed_at.strftime('%m/%d/%Y') }}
+                            {% endif %}
+                        </small>
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('ngo.view_donation', id=donation.id) }}" 
+                               class="btn btn-outline-primary">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                            {% if claim.status == 'claimed' %}
+                                <button type="button" class="btn btn-success" 
+                                        onclick="completePickup('{{ claim.id }}')">
+                                    <i class="bi bi-check"></i> Mark Complete
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if claims.pages > 1 %}
+    <nav aria-label="Claims pagination">
+        <ul class="pagination justify-content-center">
+            {% if claims.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('ngo.my_claims', page=claims.prev_num, status=status_filter) }}">
+                        <i class="bi bi-chevron-left"></i> Previous
+                    </a>
+                </li>
+            {% endif %}
+            
+            {% for page_num in claims.iter_pages() %}
+                {% if page_num %}
+                    {% if page_num != claims.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('ngo.my_claims', page=page_num, status=status_filter) }}">{{ page_num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                    {% endif %}
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if claims.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('ngo.my_claims', page=claims.next_num, status=status_filter) }}">
+                        Next <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    
+    {% else %}
+    <!-- No Claims -->
+    <div class="text-center py-5">
+        <i class="bi bi-list-check display-3 text-muted mb-3"></i>
+        <h3>{{ 'No claims found' if status_filter else 'No claims yet' }}</h3>
+        <p class="text-muted">
+            {% if status_filter %}
+                No claims with status "{{ status_filter }}" found. Try changing your filter or browse for new donations.
+            {% else %}
+                You haven't claimed any food donations yet. Start browsing available donations to make your first claim!
+            {% endif %}
+        </p>
+        <div class="d-flex justify-content-center gap-2">
+            {% if status_filter %}
+                <a href="{{ url_for('ngo.my_claims') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-funnel"></i> Clear Filter
+                </a>
+            {% endif %}
+            <a href="{{ url_for('ngo.browse_donations') }}" class="btn btn-success">
+                <i class="bi bi-search"></i> Browse Donations
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Complete Pickup Modal -->
+<div class="modal fade" id="completePickupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-check-circle"></i> Complete Pickup</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Confirm that you have successfully picked up this food donation?</p>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Important:</strong> Only mark as complete if you have actually received the food from the donor.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" style="display: inline;" id="completeForm">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> Confirm Pickup Complete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function completePickup(claimId) {
+    const form = document.getElementById('completeForm');
+    form.action = `/ngo/complete-pickup/${claimId}`;
+    const modal = new bootstrap.Modal(document.getElementById('completePickupModal'));
+    modal.show();
+}
+
+// Auto-refresh for urgent claims
+document.addEventListener('DOMContentLoaded', function() {
+    const urgentClaims = document.querySelectorAll('.border-warning');
+    if (urgentClaims.length > 0) {
+        // Refresh page every 5 minutes to update expiry times
+        setTimeout(() => {
+            window.location.reload();
+        }, 300000);
+    }
+});
+</script>
+
+<style>
+.claim-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.claim-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.border-warning {
+    border-width: 2px !important;
+}
+
+.bg-opacity-25 {
+    --bs-bg-opacity: 0.25;
+}
+
+.bg-opacity-10 {
+    --bs-bg-opacity: 0.1;
+}
+</style>
+{% endblock %}

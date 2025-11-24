@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}My Donations - Food Waste Tracker{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('donor.dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active">My Donations</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1><i class="bi bi-list"></i> My Food Donations</h1>
+                    <p class="text-muted mb-0">Manage your food donations and track their status</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('donor.add_donation') }}" class="btn btn-success">
+                        <i class="bi bi-plus-circle"></i> Add New Donation
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Filter by Status</label>
+                            <select name="status" class="form-select filter-select">
+                                <option value="">All Statuses</option>
+                                <option value="available" {{ 'selected' if status_filter == 'available' }}>Available</option>
+                                <option value="claimed" {{ 'selected' if status_filter == 'claimed' }}>Claimed</option>
+                                <option value="completed" {{ 'selected' if status_filter == 'completed' }}>Completed</option>
+                                <option value="expired" {{ 'selected' if status_filter == 'expired' }}>Expired</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-funnel"></i> Apply Filter
+                            </button>
+                        </div>
+                        {% if status_filter %}
+                        <div class="col-md-3">
+                            <a href="{{ url_for('donor.my_donations') }}" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-x"></i> Clear Filter
+                            </a>
+                        </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Donations List -->
+    {% if donations.items %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <p class="text-muted">
+                Showing {{ donations.items|length }} of {{ donations.total }} donations
+                {% if donations.pages > 1 %}(Page {{ donations.page }} of {{ donations.pages }}){% endif %}
+                {% if status_filter %} - Filtered by: <strong>{{ status_filter.title() }}</strong>{% endif %}
+            </p>
+        </div>
+    </div>
+    
+    <div class="row">
+        {% for donation in donations.items %}
+        <div class="col-lg-6 mb-4">
+            <div class="card donation-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title mb-0">{{ donation.title }}</h5>
+                        <span class="badge bg-{{ donation.get_status_class() }}">
+                            {{ donation.status.title() }}
+                        </span>
+                    </div>
+                    
+                    <p class="text-muted small mb-2">
+                        <i class="bi bi-tag"></i> {{ donation.category.name }}
+                        {% if donation.dietary_info %}
+                            • <i class="bi bi-info-circle"></i> {{ donation.dietary_info.title() }}
+                        {% endif %}
+                    </p>
+                    
+                    <p class="card-text">{{ donation.description[:120] }}{% if donation.description|length > 120 %}...{% endif %}</p>
+                    
+                    <div class="row mb-3">
+                        <div class="col-4 text-center">
+                            <strong class="text-success">{{ donation.quantity }}</strong>
+                            <br><small class="text-muted">{{ donation.unit }}</small>
+                        </div>
+                        <div class="col-4 text-center">
+                            <strong class="{{ 'text-warning' if donation.is_urgent() else 'text-info' }}">
+                                {{ donation.days_until_expiry() }}
+                            </strong>
+                            <br><small class="text-muted">days left</small>
+                        </div>
+                        <div class="col-4 text-center">
+                            <strong class="text-secondary">
+                                {{ donation.created_at.strftime('%m/%d') }}
+                            </strong>
+                            <br><small class="text-muted">created</small>
+                        </div>
+                    </div>
+                    
+                    {% if donation.is_urgent() and donation.status == 'available' %}
+                    <div class="alert alert-warning alert-sm mb-2">
+                        <i class="bi bi-exclamation-triangle"></i> <strong>Urgent!</strong> Expires soon
+                    </div>
+                    {% endif %}
+                    
+                    {% if donation.claim %}
+                    <div class="bg-light p-2 rounded mb-2">
+                        <small>
+                            <i class="bi bi-building text-primary"></i>
+                            <strong>Claimed by:</strong> {{ donation.claim.ngo.organization_name or donation.claim.ngo.full_name }}
+                            <br>
+                            <i class="bi bi-calendar"></i> {{ donation.claim.claimed_at.strftime('%B %d, %Y') }}
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="bi bi-geo-alt"></i> {{ donation.pickup_city }}
+                        </small>
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('donor.view_donation', id=donation.id) }}" 
+                               class="btn btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if donation.can_be_edited() %}
+                                <a href="{{ url_for('donor.edit_donation', id=donation.id) }}" 
+                                   class="btn btn-outline-warning">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if donations.pages > 1 %}
+    <nav aria-label="Donations pagination">
+        <ul class="pagination justify-content-center">
+            {% if donations.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('donor.my_donations', page=donations.prev_num, status=status_filter) }}">
+                        <i class="bi bi-chevron-left"></i> Previous
+                    </a>
+                </li>
+            {% endif %}
+            
+            {% for page_num in donations.iter_pages() %}
+                {% if page_num %}
+                    {% if page_num != donations.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('donor.my_donations', page=page_num, status=status_filter) }}">{{ page_num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                    {% endif %}
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if donations.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('donor.my_donations', page=donations.next_num, status=status_filter) }}">
+                        Next <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    
+    {% else %}
+    <!-- No Donations -->
+    <div class="text-center py-5">
+        <i class="bi bi-gift display-3 text-muted mb-3"></i>
+        <h3>{{ 'No donations found' if status_filter else 'No donations yet' }}</h3>
+        <p class="text-muted">
+            {% if status_filter %}
+                No donations with status "{{ status_filter }}" found. Try changing your filter or create a new donation.
+            {% else %}
+                You haven't created any food donations yet. Start making a difference by sharing your surplus food!
+            {% endif %}
+        </p>
+        <div class="d-flex justify-content-center gap-2">
+            {% if status_filter %}
+                <a href="{{ url_for('donor.my_donations') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-funnel"></i> Clear Filter
+                </a>
+            {% endif %}
+            <a href="{{ url_for('donor.add_donation') }}" class="btn btn-success">
+                <i class="bi bi-plus-circle"></i> Add Your First Donation
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
