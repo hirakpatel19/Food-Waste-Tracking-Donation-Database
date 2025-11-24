@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}My Claims{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">My Claims</h1>
+    
+    <!-- Filter Tabs -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link {% if not request.args.get('status') or request.args.get('status') == 'all' %}active{% endif %}" 
+               href="{{ url_for('ngo.my_claims') }}">All</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.args.get('status') == 'claimed' %}active{% endif %}" 
+               href="{{ url_for('ngo.my_claims', status='claimed') }}">Claimed</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.args.get('status') == 'scheduled' %}active{% endif %}" 
+               href="{{ url_for('ngo.my_claims', status='scheduled') }}">Scheduled</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.args.get('status') == 'picked_up' %}active{% endif %}" 
+               href="{{ url_for('ngo.my_claims', status='picked_up') }}">Picked Up</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.args.get('status') == 'completed' %}active{% endif %}" 
+               href="{{ url_for('ngo.my_claims', status='completed') }}">Completed</a>
+        </li>
+    </ul>
+
+    <!-- Claims List -->
+    {% if claims %}
+        <div class="row">
+            {% for claim in claims %}
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>{{ claim.donation.title }}</h5>
+                        <span class="badge badge-{% if claim.status == 'completed' %}success{% elif claim.status == 'cancelled' %}danger{% else %}primary{% endif %}">
+                            {{ claim.status.upper() }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Donor:</strong> {{ claim.donation.donor.organization_name }}</p>
+                        <p><strong>Quantity:</strong> {{ claim.donation.quantity }} {{ claim.donation.unit }}</p>
+                        <p><strong>Pickup Location:</strong> {{ claim.donation.pickup_location }}</p>
+                        <p><strong>Claimed Date:</strong> {{ claim.created_at.strftime('%Y-%m-%d %H:%M') if claim.created_at else 'N/A' }}</p>
+                        {% if claim.pickup_date %}
+                        <p><strong>Pickup Date:</strong> {{ claim.pickup_date.strftime('%Y-%m-%d %H:%M') }}</p>
+                        {% endif %}
+                        {% if claim.notes %}
+                        <p><strong>Notes:</strong> {{ claim.notes }}</p>
+                        {% endif %}
+                        
+                        <div class="mt-3">
+                            <a href="{{ url_for('ngo.view_claim', id=claim.id) }}" class="btn btn-info btn-sm">View Details</a>
+                            {% if claim.status == 'claimed' %}
+                            <a href="{{ url_for('ngo.cancel_claim', id=claim.id) }}" class="btn btn-danger btn-sm" 
+                               onclick="return confirm('Are you sure you want to cancel this claim?')">Cancel</a>
+                            {% elif claim.status == 'scheduled' %}
+                            <a href="{{ url_for('ngo.complete_pickup', id=claim.id) }}" class="btn btn-success btn-sm">Mark as Picked Up</a>
+                            {% elif claim.status == 'picked_up' %}
+                            <a href="{{ url_for('ngo.complete_pickup', id=claim.id) }}" class="btn btn-success btn-sm">Mark as Completed</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            You don't have any claims yet. <a href="{{ url_for('main.browse_donations') }}">Browse available donations</a> to make a claim.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
