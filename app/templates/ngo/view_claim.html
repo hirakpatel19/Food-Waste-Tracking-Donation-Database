@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}View Claim - Food Rescue Network{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('ngo.dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('ngo.my_claims') }}">My Claims</a></li>
+                    <li class="breadcrumb-item active">Claim Details</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1>Claim Details</h1>
+                    <p class="text-muted mb-0">{{ claim.donation.food_type }} - Claimed on {{ claim.claimed_at.strftime('%B %d, %Y') }}</p>
+                </div>
+                <span class="badge bg-{{ 'success' if claim.status == 'completed' else 'warning' if claim.status == 'pending' else 'info' }} fs-6">
+                    {{ claim.status.title() }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Donation Details -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-box"></i> Donation Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6>Food Type</h6>
+                            <p class="mb-0">{{ claim.donation.food_type }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6>Quantity</h6>
+                            <p class="mb-0">
+                                <span class="fs-4 fw-bold text-success">{{ claim.donation.quantity }}</span>
+                                <span class="text-muted">{{ claim.donation.unit }}</span>
+                            </p>
+                        </div>
+                        {% if claim.donation.description %}
+                        <div class="col-12 mb-3">
+                            <h6>Description</h6>
+                            <p class="text-muted">{{ claim.donation.description }}</p>
+                        </div>
+                        {% endif %}
+                        <div class="col-md-6 mb-3">
+                            <h6>Expiry Date</h6>
+                            <p class="mb-0">{{ claim.donation.expiry_date.strftime('%B %d, %Y') if claim.donation.expiry_date else 'N/A' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Donor Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-person"></i> Donor Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6>Donor Name</h6>
+                            <p class="mb-0">{{ claim.donation.donor.full_name or claim.donation.donor.organization_name or 'N/A' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6>Contact Email</h6>
+                            <p class="mb-0"><i class="bi bi-envelope"></i> {{ claim.donation.donor.email }}</p>
+                        </div>
+                        {% if claim.donation.donor.phone %}
+                        <div class="col-md-6 mb-3">
+                            <h6>Phone</h6>
+                            <p class="mb-0"><i class="bi bi-telephone"></i> {{ claim.donation.donor.phone }}</p>
+                        </div>
+                        {% endif %}
+                        {% if claim.donation.pickup_address %}
+                        <div class="col-12 mb-3">
+                            <h6>Pickup Address</h6>
+                            <address class="mb-0">
+                                {{ claim.donation.pickup_address }}
+                                {% if claim.donation.pickup_city %}, {{ claim.donation.pickup_city }}{% endif %}
+                            </address>
+                        </div>
+                        {% endif %}
+                        {% if claim.donation.pickup_instructions %}
+                        <div class="col-12">
+                            <h6>Pickup Instructions</h6>
+                            <div class="bg-light p-3 rounded">
+                                <p class="mb-0">{{ claim.donation.pickup_instructions }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Claim Notes -->
+            {% if claim.notes %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-sticky"></i> Claim Notes</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ claim.notes }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Actions -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5><i class="bi bi-gear"></i> Actions</h5>
+                    
+                    {% if claim.status == 'pending' or claim.status == 'claimed' %}
+                    <div class="d-grid gap-2">
+                        <form method="POST" action="{{ url_for('ngo.complete_pickup', id=claim.id) }}" 
+                              onsubmit="return confirm('Confirm that you have picked up this donation?')">
+                            <button type="submit" class="btn btn-success btn-lg w-100">
+                                <i class="bi bi-check-circle"></i> Mark as Picked Up
+                            </button>
+                        </form>
+                        
+                        <a href="{{ url_for('ngo.update_claim', id=claim.id) }}" class="btn btn-outline-primary">
+                            <i class="bi bi-pencil"></i> Edit Claim
+                        </a>
+                        
+                        <form method="POST" action="{{ url_for('ngo.cancel_claim', id=claim.id) }}" 
+                              onsubmit="return confirm('Are you sure you want to cancel this claim?')">
+                            <button type="submit" class="btn btn-outline-danger w-100">
+                                <i class="bi bi-x-circle"></i> Cancel Claim
+                            </button>
+                        </form>
+                    </div>
+                    {% elif claim.status == 'completed' %}
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i>
+                        <strong>Pickup Complete!</strong><br>
+                        {% if claim.completed_at %}
+                        Completed on {{ claim.completed_at.strftime('%B %d, %Y at %I:%M %p') }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    <hr>
+                    <a href="{{ url_for('ngo.my_claims') }}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-arrow-left"></i> Back to My Claims
+                    </a>
+                </div>
+            </div>
+
+            <!-- Claim Timeline -->
+            <div class="card">
+                <div class="card-body">
+                    <h5><i class="bi bi-clock-history"></i> Timeline</h5>
+                    
+                    <div class="timeline">
+                        <div class="d-flex mb-3">
+                            <div class="me-3">
+                                <i class="bi bi-check-circle-fill text-success"></i>
+                            </div>
+                            <div>
+                                <strong>Claimed</strong><br>
+                                <small class="text-muted">{{ claim.claimed_at.strftime('%B %d, %Y at %I:%M %p') }}</small>
+                            </div>
+                        </div>
+                        
+                        {% if claim.pickup_time %}
+                        <div class="d-flex mb-3">
+                            <div class="me-3">
+                                <i class="bi bi-calendar-event text-info"></i>
+                            </div>
+                            <div>
+                                <strong>Scheduled Pickup</strong><br>
+                                <small class="text-muted">{{ claim.pickup_time.strftime('%B %d, %Y at %I:%M %p') }}</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if claim.status == 'completed' and claim.completed_at %}
+                        <div class="d-flex">
+                            <div class="me-3">
+                                <i class="bi bi-check-circle-fill text-success"></i>
+                            </div>
+                            <div>
+                                <strong>Completed</strong><br>
+                                <small class="text-muted">{{ claim.completed_at.strftime('%B %d, %Y at %I:%M %p') }}</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
