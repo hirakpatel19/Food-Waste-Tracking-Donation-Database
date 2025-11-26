@@ -173,14 +173,3 @@ python run.py
 2. Filimonau, V., Zhang, H., & Wang, L. (2020). "Food waste management in Shanghai full-service restaurants: A senior managers' perspective." *Journal of Cleaner Production*, 258, 120975.
 
 3. Roy, P., Mohanty, A. K., Dick, P., & Misra, M. (2023). "A Review on the Challenges and Choices for Food Waste Valorization: Environmental and Economic Impacts." *ACS Environmental Au*, 3(2), 58–75.
-
-## License
-
-This project is developed for educational purposes as part of the Database course at Algoma University.
-
----
-
-**Project Timeline:** Fall 2025  
-**Course:** Database Systems  
-**Institution:** Algoma University  
-**Last Updated:** September 29, 2025
